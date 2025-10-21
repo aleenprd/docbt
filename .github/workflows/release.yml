@@ -1,0 +1,324 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.0)'
+        required: true
+        type: string
+      release_pypi:
+        description: 'Release to PyPI'
+        required: true
+        type: boolean
+        default: true
+      release_docker:
+        description: 'Release Docker images'
+        required: true
+        type: boolean
+        default: true
+      docker_registry:
+        description: 'Docker registry (ghcr.io, docker.io, etc.)'
+        required: false
+        type: string
+        default: 'ghcr.io'
+
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check-version.outputs.version }}
+      needs_bump: ${{ steps.check-version.outputs.needs_bump }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate branch
+        run: |
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          if [[ "$CURRENT_BRANCH" != "main" ]]; then
+            echo "Error: Releases can only be created from the main branch"
+            echo "Current branch: $CURRENT_BRANCH"
+            exit 1
+          fi
+
+      - name: Validate version format
+        run: |
+          if ! [[ "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Version must be in semver format (e.g., 0.1.0)"
+            exit 1
+          fi
+
+      - name: Check if version bump is needed
+        id: check-version
+        run: |
+          CURRENT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          TARGET_VERSION="${{ inputs.version }}"
+
+          echo "Current version in main: $CURRENT_VERSION"
+          echo "Target release version: $TARGET_VERSION"
+
+          if [[ "$CURRENT_VERSION" != "$TARGET_VERSION" ]]; then
+            echo "needs_bump=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Version mismatch! Will bump $CURRENT_VERSION → $TARGET_VERSION"
+          else
+            echo "needs_bump=false" >> $GITHUB_OUTPUT
+            echo "✅ Version already matches target"
+          fi
+
+          echo "version=$TARGET_VERSION" >> $GITHUB_OUTPUT
+
+  bump-version:
+    name: Bump Version Before Release
+    runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.outputs.needs_bump == 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install bump-my-version
+        run: |
+          pip install bump-my-version>=0.26.0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump to release version
+        run: |
+          echo "Bumping to version ${{ needs.validate.outputs.version }}"
+          bump-my-version replace --new-version "${{ needs.validate.outputs.version }}" --no-regex
+
+          git add -A
+          git commit -m "chore: bump version to ${{ needs.validate.outputs.version }} [skip ci]"
+
+          git log -1 --oneline
+          git diff HEAD~1
+
+      - name: Push version bump
+        run: |
+          git push origin main
+
+          # Wait a moment for the push to complete
+          sleep 5
+
+  release-pypi:
+    name: Release to PyPI
+    runs-on: ubuntu-latest
+    needs: [validate, bump-version]
+    if: always() && needs.validate.result == 'success' && (needs.bump-version.result == 'success' || needs.bump-version.result == 'skipped') && inputs.release_pypi
+    environment:
+      name: pypi
+      url: https://pypi.org/project/docbt/
+    permissions:
+      id-token: write  # Required for trusted publishing
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Pull latest changes (after version bump)
+        run: |
+          git pull origin main
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Build package
+        run: |
+          uv build
+
+          # Verify version in built package
+          echo "Built package version:"
+          ls -lh dist/
+
+      - name: Check package
+        run: |
+          uv pip install --system twine
+          twine check dist/*
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          print-hash: true
+
+  release-docker:
+    name: Release Docker Images
+    runs-on: ubuntu-latest
+    needs: [validate, bump-version]
+    if: always() && needs.validate.result == 'success' && (needs.bump-version.result == 'success' || needs.bump-version.result == 'skipped') && inputs.release_docker
+    environment:
+      name: docker-registry
+    permissions:
+      contents: read
+      packages: write  # Required for GHCR
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Pull latest changes (after version bump)
+        run: |
+          git pull origin main
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: inputs.docker_registry == 'ghcr.io'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: inputs.docker_registry == 'docker.io'
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ inputs.docker_registry }}/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ inputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }}
+            type=semver,pattern={{major}},value=${{ inputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push base image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: base
+          push: true
+          tags: |
+            ${{ inputs.docker_registry }}/${{ github.repository }}:base-${{ inputs.version }}
+            ${{ inputs.docker_registry }}/${{ github.repository }}:base-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build and push production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build and push development image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: development
+          push: true
+          tags: |
+            ${{ inputs.docker_registry }}/${{ github.repository }}:dev-${{ inputs.version }}
+            ${{ inputs.docker_registry }}/${{ github.repository }}:dev-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, bump-version, release-pypi, release-docker]
+    if: always() && needs.validate.result == 'success' && (needs.release-pypi.result == 'success' || needs.release-docker.result == 'success')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Pull latest changes
+        run: |
+          git pull origin main
+
+      - name: Create Git Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check if tag already exists
+          if git rev-parse "v${{ inputs.version }}" >/dev/null 2>&1; then
+            echo "Tag v${{ inputs.version }} already exists"
+          else
+            git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+            git push origin "v${{ inputs.version }}"
+          fi
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ inputs.version }}
+          release_name: Release v${{ inputs.version }}
+          body: |
+            ## Release v${{ inputs.version }}
+
+            ### Released Components
+            ${{ inputs.release_pypi && '✅ PyPI Package' || '⏭️ PyPI Package (skipped)' }}
+            ${{ inputs.release_docker && '✅ Docker Images' || '⏭️ Docker Images (skipped)' }}
+
+            ### Installation
+
+            **From PyPI:**
+            ```bash
+            pip install docbt==${{ inputs.version }}
+            ```
+
+            **Docker:**
+            ```bash
+            docker pull ${{ inputs.docker_registry }}/${{ github.repository }}:${{ inputs.version }}
+            ```
+
+            ### Changes
+            See [CHANGELOG.md](CHANGELOG.md) for details.
+          draft: false
+          prerelease: false

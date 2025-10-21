@@ -1,0 +1,117 @@
+services:
+  docbt:
+    build:
+      context: .
+      target: base
+      dockerfile: Dockerfile
+    image: docbt:base
+    container_name: docbt
+    ports:
+      - "8501:8501"
+    environment:
+      # AI/LLM Configuration
+      - DOCBT_USE_AI_DEFAULT=${DOCBT_USE_AI_DEFAULT:-True}
+      - DOCBT_LLM_PROVIDER_DEFAULT=${DOCBT_LLM_PROVIDER_DEFAULT:-lmstudio}
+      - DOCBT_OPENAI_API_KEY=${DOCBT_OPENAI_API_KEY:-}
+
+      # Ollama Configuration
+      - DOCBT_OLLAMA_HOST=${DOCBT_OLLAMA_HOST:-host.docker.internal}
+      - DOCBT_OLLAMA_PORT=${DOCBT_OLLAMA_PORT:-11434}
+
+      # LM Studio Configuration
+      - DOCBT_LMSTUDIO_HOST=${DOCBT_LMSTUDIO_HOST:-host.docker.internal}
+      - DOCBT_LMSTUDIO_PORT=${DOCBT_LMSTUDIO_PORT:-1234}
+
+      # Data Source Configuration
+      - DOCBT_DATA_SOURCE_DEFAULT=${DOCBT_DATA_SOURCE_DEFAULT:-filesystem}
+      - DOCBT_DISPLAY_DATA_SOURCE_FILESYSTEM=${DOCBT_DISPLAY_DATA_SOURCE_FILESYSTEM:-True}
+      - DOCBT_DISPLAY_DATA_SOURCE_SNOWFLAKE=${DOCBT_DISPLAY_DATA_SOURCE_SNOWFLAKE:-True}
+      - DOCBT_DISPLAY_DATA_SOURCE_BIGQUERY=${DOCBT_DISPLAY_DATA_SOURCE_BIGQUERY:-True}
+
+      # Developer Mode
+      - DOCBT_DEVELOPER_MODE_ENABLED=${DOCBT_DEVELOPER_MODE_ENABLED:-True}
+      - DOCBT_SHOW_CHAIN_OF_THOUGHT=${DOCBT_SHOW_CHAIN_OF_THOUGHT:-True}
+
+      # UI Configuration
+      - DOCBT_MAX_DISPLAY_MESSAGES=${DOCBT_MAX_DISPLAY_MESSAGES:-30}
+      - DOCBT_CHAT_CONTAINER_HEIGHT=${DOCBT_CHAT_CONTAINER_HEIGHT:-400}
+      - DOCBT_DEFAULT_SAMPLE_SIZE=${DOCBT_DEFAULT_SAMPLE_SIZE:-10}
+
+      # Snowflake (set in .env if using Snowflake)
+      - DOCBT_SNOWFLAKE_ACCOUNT=${DOCBT_SNOWFLAKE_ACCOUNT:-}
+      - DOCBT_SNOWFLAKE_USER=${DOCBT_SNOWFLAKE_USER:-}
+      - DOCBT_SNOWFLAKE_PASSWORD=${DOCBT_SNOWFLAKE_PASSWORD:-}
+      - DOCBT_SNOWFLAKE_WAREHOUSE=${DOCBT_SNOWFLAKE_WAREHOUSE:-}
+      - DOCBT_SNOWFLAKE_DATABASE=${DOCBT_SNOWFLAKE_DATABASE:-}
+      - DOCBT_SNOWFLAKE_SCHEMA=${DOCBT_SNOWFLAKE_SCHEMA:-}
+      - DOCBT_SNOWFLAKE_AUTHENTICATOR=${DOCBT_SNOWFLAKE_AUTHENTICATOR:-snowflake}
+
+      # BigQuery (set in .env if using BigQuery)
+      - DOCBT_GOOGLE_APPLICATION_CREDENTIALS=${DOCBT_GOOGLE_APPLICATION_CREDENTIALS:-}
+
+    volumes:
+      # Mount local directory for file uploads
+      - ./data:/app/data
+      # Mount credentials if needed
+      # - ./credentials:/app/credentials:ro
+
+    restart: unless-stopped
+
+    # Use host network mode to access local LLM servers (Ollama, LM Studio)
+    network_mode: host
+
+    # extra_hosts not needed with host network mode
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8501/_stcore/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Production variant with all providers
+  docbt-production:
+    build:
+      context: .
+      target: production
+      dockerfile: Dockerfile
+    image: docbt:production
+    container_name: docbt-production
+    profiles: ["production"]
+    ports:
+      - "8501:8501"
+    environment:
+      - DOCBT_USE_AI_DEFAULT=True
+      - DOCBT_LLM_PROVIDER_DEFAULT=openai
+      - DOCBT_OPENAI_API_KEY=${DOCBT_OPENAI_API_KEY}
+      - DOCBT_DATA_SOURCE_DEFAULT=snowflake
+      - DEVELOPER_MODE_ENABLED=False
+    volumes:
+      - ./data:/app/data
+      - ./credentials:/app/credentials:ro
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Development variant with dev tools
+  docbt-dev:
+    build:
+      context: .
+      target: development
+      dockerfile: Dockerfile
+    image: docbt:dev
+    container_name: docbt-dev
+    profiles: ["dev"]
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - /app/.venv
+      - /app/src/docbt.egg-info
+    environment:
+      - DEVELOPER_MODE_ENABLED=True
+    command: docbt run
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Documentation
+docs/_build/
+docs/*.md
+
+# Keep root README.md for package metadata
+!README.md
+
+LICENSE
+
+# Pre-commit
+.pre-commit-config.yaml
+
+# Environment files (security)
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Tests
+tests/
+*.test.py
+
+# UV lock file (we'll generate fresh in container)
+uv.lock
+
+# Test Coverage
+.coverage
+.coverage.*
