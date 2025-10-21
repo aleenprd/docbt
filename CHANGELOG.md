@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2025-10-21
+
 ## [0.1.3] - 2025-10-21
 
 - Initial release of docbt

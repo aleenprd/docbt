@@ -1,6 +1,6 @@
 """docbt - Documentation Build Tool for dbt projects."""
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 # Export availability flags from providers
 from .providers import BIGQUERY_AVAILABLE, SNOWFLAKE_AVAILABLE
