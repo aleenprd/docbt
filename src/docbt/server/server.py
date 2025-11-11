@@ -1342,17 +1342,16 @@ Use this context to provide relevant and informed responses."""
         return dbs
 
     @staticmethod
-    # @st.cache_data
-    def get_snowflake_tables(_conn, _db):
+    @st.cache_data
+    def cache_snowflake_tables(_conn, _db):
+        logger.info(f"Fetching tables for schemas in {_db}")
         schemas = _conn.list_schemas(_db)
-        logger.debug(f"Schemas in {_db}: {schemas}")
         tables = []
         if schemas:
-            logger.critical(f"Fetching tables for schemas in {_db}")
             for schema in schemas:
                 if schema not in ["INFORMATION_SCHEMA"]:
                     tables.extend([schema + "." + t for t in _conn.list_tables(_db, schema)])
-        logger.debug(f"Tables in {_db}: {tables}")
+
         return tables
 
     @staticmethod
@@ -1589,19 +1588,21 @@ Use this context to provide relevant and informed responses."""
         dbs = DocbtServer.cache_snowflake_dbs(conn)
         st.session_state.sf_wh_df = DocbtServer.cache_snowflake_warehouses(conn)
 
-        db_choice = st.selectbox(
+        st.session_state.sf_db = st.selectbox(
             "Select Database",
             dbs,
             index=0,
             help="Select the Snowflake database to use.",
+            on_change=lambda: DocbtServer.cache_snowflake_tables.clear(),
         )
-        st.session_state.sf_db = db_choice
 
-        tables = DocbtServer.get_snowflake_tables(conn, db_choice)
+        st.session_state.sf_tables = DocbtServer.cache_snowflake_tables(
+            conn, st.session_state.sf_db
+        )
 
         st.session_state.sf_table = st.selectbox(
             "Select Table",
-            tables,
+            st.session_state.sf_tables,
             index=0,
             help="Select the table to load data from.",
         )
@@ -1637,12 +1638,11 @@ Use this context to provide relevant and informed responses."""
                     LAST_ALTERED,
                     LAST_DDL,
                     LAST_DDL_BY
-                FROM INFORMATION_SCHEMA.TABLES
+                FROM {st.session_state.sf_db}.INFORMATION_SCHEMA.TABLES
                 WHERE CONCAT_WS('.', TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME) = '{fully_qualified_table}'
                 """
                 logger.debug(f"Executing table metadata query: {table_metadata_query}")
                 st.session_state.sf_table_info_df = conn.query_data(table_metadata_query)
-                logger.debug(st.session_state.sf_table_info_df)
 
                 cols_metadata_query = f"""
                     DESCRIBE TABLE {fully_qualified_table} ->>

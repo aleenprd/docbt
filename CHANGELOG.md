@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.5] - 2025-11-11
+## [0.1.6] - 2025-11-11
+- Reintroduce caching of Snowflake tables while fixing metadata bug and latency due to re-calling function.
 
 ## [0.1.5] - 2025-11-11
 - Fixed bug in Snowflake conn where it didn't fetch tables properly
