@@ -1,6 +1,6 @@
 [project]
 name = "docbt"
-version = "0.1.6"
+version = "0.1.7"
 description = "docdbt (documentation build tool) is a Streamlit app for managing dbt project documentation."
 readme = "README.md"
 authors = [{ name = "Alin Preda", email = "predaalin2694@gmail.com" }]
@@ -128,7 +128,7 @@ dev = [
 ]
 
 [tool.bumpversion]
-current_version = "0.1.6"
+current_version = "0.1.7"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
