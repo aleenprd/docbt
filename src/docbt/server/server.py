@@ -47,7 +47,9 @@ logger.debug(f"Server logging configured with level: {LOG_LEVEL}")
 
 
 # Configure YAML to preserve order
-yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_dict(data.items()))
+yaml.add_representer(
+    OrderedDict, lambda dumper, data: dumper.represent_dict(data.items())
+)
 
 
 USE_AI_DEFAULT = os.getenv("DOCBT_USE_AI_DEFAULT", "True").lower() == "true"
@@ -85,7 +87,8 @@ DISPLAY_DATA_SOURCE_SNOWFLAKE = (
     and os.getenv("DOCBT_DISPLAY_DATA_SOURCE_SNOWFLAKE", "True").lower() == "true"
 )
 DISPLAY_DATA_SOURCE_BIGQUERY = (
-    BIGQUERY_AVAILABLE and os.getenv("DOCBT_DISPLAY_DATA_SOURCE_BIGQUERY", "True").lower() == "true"
+    BIGQUERY_AVAILABLE
+    and os.getenv("DOCBT_DISPLAY_DATA_SOURCE_BIGQUERY", "True").lower() == "true"
 )
 DATA_SOURCE_OPTIONS = []
 for extra_source in [
@@ -165,7 +168,9 @@ class DocbtServer:
                     df_copy[col] = df_copy[col].apply(
                         lambda x: x.isoformat() if pd.notna(x) else None
                     )
-                    logger.debug(f"Column '{col}' converted from {dtype} to ISO format string")
+                    logger.debug(
+                        f"Column '{col}' converted from {dtype} to ISO format string"
+                    )
 
                 # Handle timedelta types
                 elif pd.api.types.is_timedelta64_dtype(dtype):
@@ -199,7 +204,9 @@ class DocbtServer:
                 elif dtype == "object":
                     # Try to identify what's in the object column
                     sample_val = (
-                        df_copy[col].dropna().iloc[0] if not df_copy[col].dropna().empty else None
+                        df_copy[col].dropna().iloc[0]
+                        if not df_copy[col].dropna().empty
+                        else None
                     )
 
                     if sample_val is not None:
@@ -212,9 +219,11 @@ class DocbtServer:
                         # Handle bytes
                         elif isinstance(sample_val, bytes):
                             df_copy[col] = df_copy[col].apply(
-                                lambda x: x.decode("utf-8", errors="replace")
-                                if isinstance(x, bytes)
-                                else x
+                                lambda x: (
+                                    x.decode("utf-8", errors="replace")
+                                    if isinstance(x, bytes)
+                                    else x
+                                )
                             )
                             logger.debug(f"Column '{col}' (object) decoded from bytes")
                         # Generic fallback for other object types
@@ -232,7 +241,9 @@ class DocbtServer:
             json_str = df_copy.to_json(
                 orient="records", indent=2, date_format="iso", default_handler=str
             )
-            logger.debug(f"Successfully converted DataFrame to JSON ({len(json_str)} characters)")
+            logger.debug(
+                f"Successfully converted DataFrame to JSON ({len(json_str)} characters)"
+            )
             return json_str
 
         except Exception as e:
@@ -258,7 +269,9 @@ class DocbtServer:
 
         # Get existing system prompt from session state or use default
         if developer_mode:
-            current_prompt = st.session_state.get("system_prompt", DEFAULT_SYSTEM_PROMPT)
+            current_prompt = st.session_state.get(
+                "system_prompt", DEFAULT_SYSTEM_PROMPT
+            )
 
             with st.expander("📝 System Prompt Configuration", expanded=False):
                 system_prompt = st.text_area(
@@ -312,7 +325,9 @@ class DocbtServer:
         Returns:
             bool: True if developer mode is enabled, False otherwise.
         """
-        defaulth_developer_mode = os.getenv("DEVELOPER_MODE_ENABLED", "True").lower() == "true"
+        defaulth_developer_mode = (
+            os.getenv("DEVELOPER_MODE_ENABLED", "True").lower() == "true"
+        )
         st.session_state.developer_mode = st.toggle(
             "Developer Mode",
             defaulth_developer_mode,
@@ -358,7 +373,9 @@ class DocbtServer:
                     and st.session_state.llm_config.get("model_name")
                     and "gpt-5" in st.session_state.llm_config.get("model_name", "")
                 ):
-                    st.warning("GPT-5 models do not support temperature/top_p/stop parameters.")
+                    st.warning(
+                        "GPT-5 models do not support temperature/top_p/stop parameters."
+                    )
                     st.session_state.llm_config.pop("temperature", None)
                     st.session_state.llm_config.pop("top_p", None)
                     st.session_state.llm_config.pop("stop", None)
@@ -440,7 +457,9 @@ class DocbtServer:
                         f"🎯 Max Tokens: {max_tokens} | 🌡️ Temperature: {temperature} | 🎪 Top P: {top_p}"
                     )
                     if stop_sequences:
-                        stop_list = [s.strip() for s in stop_sequences.split(",") if s.strip()]
+                        stop_list = [
+                            s.strip() for s in stop_sequences.split(",") if s.strip()
+                        ]
                         st.caption(f"🛑 Stop Sequences: {stop_list}")
                     else:
                         st.caption("🛑 Stop Sequences: None")
@@ -463,7 +482,9 @@ class DocbtServer:
         if "llm_provider" not in st.session_state:
             # Use default provider if it's in the list, otherwise use the first available
             st.session_state.llm_provider = (
-                DEFAULT_PROVIDER if DEFAULT_PROVIDER in LLM_PROVIDERS else LLM_PROVIDERS[0]
+                DEFAULT_PROVIDER
+                if DEFAULT_PROVIDER in LLM_PROVIDERS
+                else LLM_PROVIDERS[0]
             )
 
         # Ensure current provider is in the available list
@@ -558,13 +579,17 @@ class DocbtServer:
 
         with col2:
             # Button to fetch models from API
-            if st.button("🔄 Fetch Models", help="Fetch available models from OpenAI API"):
+            if st.button(
+                "🔄 Fetch Models", help="Fetch available models from OpenAI API"
+            ):
                 if openai_api_key:
                     with st.spinner("Fetching available models..."):
                         fetched_models = self.fetch_openai_models(openai_api_key)
                         if fetched_models:
                             st.session_state.openai_fetched_models = fetched_models
-                            st.success(f"✅ Fetched {len(fetched_models)} models from OpenAI API")
+                            st.success(
+                                f"✅ Fetched {len(fetched_models)} models from OpenAI API"
+                            )
                             st.rerun()
                         else:
                             st.error(
@@ -579,7 +604,9 @@ class DocbtServer:
                 f"📡 Using models fetched from OpenAI API ({len(st.session_state.openai_fetched_models)} models)"
             )
         else:
-            st.info("📋 Using default model list (click 'Fetch Models' to get latest from API)")
+            st.info(
+                "📋 Using default model list (click 'Fetch Models' to get latest from API)"
+            )
 
         return openai_api_key, selected_model
 
@@ -861,7 +888,9 @@ class DocbtServer:
             str | dict: LLM response content or a dictionary with content and metrics if in developer
         """
         if not llm_config.get("enabled"):
-            return "❌ LLM service is not enabled. Please configure it in the Setup tab."
+            return (
+                "❌ LLM service is not enabled. Please configure it in the Setup tab."
+            )
 
         provider = llm_config.get("provider")
         system_prompt = llm_config.get("system_prompt")
@@ -1064,9 +1093,7 @@ Use this context to provide relevant and informed responses."""
             enhanced_system_prompt = base_prompt + data_context
 
             if st.session_state.get("data_source") in ["snowflake", "bigquery"]:
-                enhanced_system_prompt += (
-                    f"\nAssume the dataset is stored in {st.session_state.get('data_source')}."
-                )
+                enhanced_system_prompt += f"\nAssume the dataset is stored in {st.session_state.get('data_source')}."
 
             return enhanced_system_prompt
 
@@ -1096,9 +1123,13 @@ Use this context to provide relevant and informed responses."""
 
         # Show data context if available
         if "node" in st.session_state:
-            st.info("💡 Your questions will automatically include sample data for context.")
+            st.info(
+                "💡 Your questions will automatically include sample data for context."
+            )
         else:
-            st.info("💡 Upload data in the **Data** tab to get AI insights about your dataset.")
+            st.info(
+                "💡 Upload data in the **Data** tab to get AI insights about your dataset."
+            )
 
         # Show system prompt settings
         system_prompt = llm_config.get("system_prompt")
@@ -1125,13 +1156,17 @@ Use this context to provide relevant and informed responses."""
                     else:
                         st.caption("ℹ️ No data context (no uploaded file)")
             else:
-                st.info("💡 No custom system prompt configured. Using default behavior.")
+                st.info(
+                    "💡 No custom system prompt configured. Using default behavior."
+                )
 
         # Initialize chat history
         if "chat_history" not in st.session_state:
             st.session_state.chat_history = []  # For LLM context (no metrics)
         if "chat_display" not in st.session_state:
-            st.session_state.chat_display = []  # For UI display (with metrics if enabled)
+            st.session_state.chat_display = (
+                []
+            )  # For UI display (with metrics if enabled)
 
         # Chat interface
 
@@ -1158,9 +1193,9 @@ Use this context to provide relevant and informed responses."""
                         # Handle both old string format and new dict format
                         if isinstance(bot_response_data, dict):
                             # Display reasoning if available
-                            if bot_response_data.get("reasoning") and st.session_state.get(
-                                "show_chain_of_thought", False
-                            ):
+                            if bot_response_data.get(
+                                "reasoning"
+                            ) and st.session_state.get("show_chain_of_thought", False):
                                 with st.expander("🧠 Chain of Thought", expanded=False):
                                     st.markdown(bot_response_data["reasoning"])
 
@@ -1168,9 +1203,9 @@ Use this context to provide relevant and informed responses."""
                             st.write(bot_response_data.get("content", "No response"))
 
                             # Display metrics if available
-                            if bot_response_data.get("metrics") and not bot_response_data.get(
-                                "error"
-                            ):
+                            if bot_response_data.get(
+                                "metrics"
+                            ) and not bot_response_data.get("error"):
                                 metrics = bot_response_data["metrics"]
                                 self._caption_chat_metrics(metrics)
                         else:
@@ -1224,7 +1259,9 @@ Use this context to provide relevant and informed responses."""
                 else:
                     # Simple string response
                     st.session_state.chat_history.append((user_input, result))
-                    st.session_state.chat_display.append((user_input, {"content": result}))
+                    st.session_state.chat_display.append(
+                        (user_input, {"content": result})
+                    )
 
             # Rerun to update the display
             st.rerun()
@@ -1254,7 +1291,9 @@ Use this context to provide relevant and informed responses."""
         if df is not None and not df.empty:
             st.markdown(f"- 📊 **Rows:** {len(df)}")
             st.markdown(f"- 📈 **Columns:** {len(df.columns)}")
-            st.markdown(f"- 💾 **Memory Usage:** {df.memory_usage(deep=True).sum():,.0f} bytes")
+            st.markdown(
+                f"- 💾 **Memory Usage:** {df.memory_usage(deep=True).sum():,.0f} bytes"
+            )
             st.markdown(f"- 🔢 **Data Types:** {len(df.dtypes.unique())}")
 
     def _file_stats(self, file) -> None:
@@ -1340,14 +1379,19 @@ Use this context to provide relevant and informed responses."""
         return dbs
 
     @staticmethod
-    @st.cache_data
-    def cache_snowflake_tables(_conn, _db):
+    # @st.cache_data
+    def get_snowflake_tables(_conn, _db):
         schemas = _conn.list_schemas(_db)
+        logger.debug(f"Schemas in {_db}: {schemas}")
         tables = []
         if schemas:
+            logger.critical(f"Fetching tables for schemas in {_db}")
             for schema in schemas:
                 if schema not in ["INFORMATION_SCHEMA"]:
-                    tables.extend([schema + "." + t for t in _conn.list_tables(_db)])
+                    tables.extend(
+                        [schema + "." + t for t in _conn.list_tables(_db, schema)]
+                    )
+        logger.debug(f"Tables in {_db}: {tables}")
         return tables
 
     @staticmethod
@@ -1413,7 +1457,9 @@ Use this context to provide relevant and informed responses."""
         )
         if st.session_state.bq_dataset != "all":
             bq_tables_choice = [
-                t for t in bq_all_tables if t.startswith(st.session_state.bq_dataset + ".")
+                t
+                for t in bq_all_tables
+                if t.startswith(st.session_state.bq_dataset + ".")
             ]
         else:
             bq_tables_choice = bq_all_tables
@@ -1450,7 +1496,9 @@ Use this context to provide relevant and informed responses."""
                 WHERE CONCAT(TABLE_CATALOG, '.', TABLE_SCHEMA, '.', TABLE_NAME) = '{fully_qualified_table}'
                 """
                 logger.debug(f"Executing table metadata query: {table_metadata_query}")
-                st.session_state.bq_table_info_df = conn.query_data(table_metadata_query)
+                st.session_state.bq_table_info_df = conn.query_data(
+                    table_metadata_query
+                )
                 logger.debug(st.session_state.bq_table_info_df)
 
                 cols_metadata_query = f"""
@@ -1511,13 +1559,13 @@ Use this context to provide relevant and informed responses."""
                     logger.debug("✅ Sample data fetched successfully!")
                     st.session_state.node = sample_df
 
-                    st.session_state["configuration"]["models"][0] = (
-                        self.create_default_configuration()
-                    )
+                    st.session_state["configuration"]["models"][
+                        0
+                    ] = self.create_default_configuration()
 
-                    st.session_state["configuration"]["models"][0]["columns"] = (
-                        self.create_default_column_dict()
-                    )
+                    st.session_state["configuration"]["models"][0][
+                        "columns"
+                    ] = self.create_default_column_dict()
 
                     st.rerun()
                 else:
@@ -1584,14 +1632,16 @@ Use this context to provide relevant and informed responses."""
         dbs = DocbtServer.cache_snowflake_dbs(conn)
         st.session_state.sf_wh_df = DocbtServer.cache_snowflake_warehouses(conn)
 
-        st.session_state.sf_db = st.selectbox(
+        db_choice = st.selectbox(
             "Select Database",
             dbs,
             index=0,
             help="Select the Snowflake database to use.",
         )
+        st.session_state.sf_db = db_choice
 
-        tables = DocbtServer.cache_snowflake_tables(conn, st.session_state.sf_db)
+        tables = DocbtServer.get_snowflake_tables(conn, db_choice)
+
         st.session_state.sf_table = st.selectbox(
             "Select Table",
             tables,
@@ -1604,11 +1654,11 @@ Use this context to provide relevant and informed responses."""
 
         if get_sample:
             if st.session_state.sf_table:
-                fully_qualified_table = f"{st.session_state.sf_db}.{st.session_state.sf_table}"
-
-                select_query = (
-                    f"SELECT * FROM {fully_qualified_table} LIMIT {st.session_state.sample_size}"
+                fully_qualified_table = (
+                    f"{st.session_state.sf_db}.{st.session_state.sf_table}"
                 )
+
+                select_query = f"SELECT * FROM {fully_qualified_table} LIMIT {st.session_state.sample_size}"
                 logger.debug(f"Executing select query: {select_query}")
                 sample_df = conn.query_data(select_query)
 
@@ -1634,7 +1684,9 @@ Use this context to provide relevant and informed responses."""
                 WHERE CONCAT_WS('.', TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME) = '{fully_qualified_table}'
                 """
                 logger.debug(f"Executing table metadata query: {table_metadata_query}")
-                st.session_state.sf_table_info_df = conn.query_data(table_metadata_query)
+                st.session_state.sf_table_info_df = conn.query_data(
+                    table_metadata_query
+                )
                 logger.debug(st.session_state.sf_table_info_df)
 
                 cols_metadata_query = f"""
@@ -1661,13 +1713,13 @@ Use this context to provide relevant and informed responses."""
                 ):
                     logger.debug("✅ Sample data fetched successfully!")
                     st.session_state.node = sample_df
-                    st.session_state["configuration"]["models"][0] = (
-                        self.create_default_configuration()
-                    )
+                    st.session_state["configuration"]["models"][
+                        0
+                    ] = self.create_default_configuration()
 
-                    st.session_state["configuration"]["models"][0]["columns"] = (
-                        self.create_default_column_dict()
-                    )
+                    st.session_state["configuration"]["models"][0][
+                        "columns"
+                    ] = self.create_default_column_dict()
 
                     st.rerun()
                 else:
@@ -1711,13 +1763,15 @@ Use this context to provide relevant and informed responses."""
         if get_sample:
             df = self._load_data_from_upload(uploaded_file)
 
-            if df is not None and (not df.empty if isinstance(df, pd.DataFrame) else True):
+            if df is not None and (
+                not df.empty if isinstance(df, pd.DataFrame) else True
+            ):
                 st.session_state.uploaded_file = uploaded_file
 
                 st.session_state.node = df.head(st.session_state.sample_size)
-                st.session_state["configuration"]["models"][0]["columns"] = (
-                    self.create_default_column_dict()
-                )
+                st.session_state["configuration"]["models"][0][
+                    "columns"
+                ] = self.create_default_column_dict()
                 st.rerun()
 
         if "node" in st.session_state:
@@ -1754,7 +1808,9 @@ Use this context to provide relevant and informed responses."""
     def parse_raw_tags(self, tags: str) -> list[str] | None:
         """Check and parse comma-separated tags string into a list."""
         if tags:
-            tag_list = [tag.strip().replace(" ", "_") for tag in tags.split(",") if tag.strip()]
+            tag_list = [
+                tag.strip().replace(" ", "_") for tag in tags.split(",") if tag.strip()
+            ]
             return tag_list if tag_list else None
         return None
 
@@ -1785,32 +1841,34 @@ Use this context to provide relevant and informed responses."""
                     if st.session_state["data_source"] == "snowflake":
                         transient = st.checkbox(
                             "Transient Table",
-                            value=st.session_state.configuration["models"][0]["config"].get(
-                                "transient", True
-                            ),
+                            value=st.session_state.configuration["models"][0][
+                                "config"
+                            ].get("transient", True),
                             help="Whether to create the table as a [transient table](https://docs.snowflake.com/en/user-guide/tables-temp-transient) (if supported by the data warehouse).",
                         )
                         automatic_clustering = st.checkbox(
                             "Automatic Clustering",
-                            value=st.session_state.configuration["models"][0]["config"].get(
-                                "automatic_clustering", False
-                            ),
+                            value=st.session_state.configuration["models"][0][
+                                "config"
+                            ].get("automatic_clustering", False),
                             help="Whether to enable [automatic clustering](https://docs.snowflake.com/en/user-guide/tables-auto-reclustering) on the table (if supported by the data warehouse).",
                         )
                         copy_grants = st.checkbox(
                             "Copy Grants",
-                            value=st.session_state.configuration["models"][0]["config"].get(
-                                "copy_grants", False
-                            ),
+                            value=st.session_state.configuration["models"][0][
+                                "config"
+                            ].get("copy_grants", False),
                             help="Whether to copy grants from the source table to the target table during [cloning](https://docs.snowflake.com/en/user-guide/object-clone).",
                         )
-                        cluster_by_cols = [None] + st.session_state["node"].columns.tolist()
+                        cluster_by_cols = [None] + st.session_state[
+                            "node"
+                        ].columns.tolist()
                         cluster_by = st.multiselect(
                             "Cluster By",
                             options=cluster_by_cols,
-                            default=st.session_state.configuration["models"][0]["config"].get(
-                                "cluster_by", None
-                            ),
+                            default=st.session_state.configuration["models"][0][
+                                "config"
+                            ].get("cluster_by", None),
                             help="String or comma-separated list of columns to [cluster](https://docs.snowflake.com/en/user-guide/tables-clustering-keys) by.",
                             placeholder="e.g., column1, column2",
                         )
@@ -1825,7 +1883,9 @@ Use this context to provide relevant and informed responses."""
                         for wh in wh_info:
                             wh_help_text += f"- **{wh['WH_NAME']}** (Type: {wh['WH_TYPE']}, Size: {wh['WH_SIZE']})\n"
 
-                        wh_options = [None] + wh_options  # Add None option at the beginning
+                        wh_options = [
+                            None
+                        ] + wh_options  # Add None option at the beginning
                         snowflake_warehouse = st.selectbox(
                             "Snowflake Warehouse",
                             options=wh_options,
@@ -1833,36 +1893,38 @@ Use this context to provide relevant and informed responses."""
                             help=wh_help_text,
                         )
 
-                        st.session_state.configuration["models"][0]["config"]["transient"] = (
-                            transient
-                        )
+                        st.session_state.configuration["models"][0]["config"][
+                            "transient"
+                        ] = transient
                         st.session_state.configuration["models"][0]["config"][
                             "automatic_clustering"
                         ] = automatic_clustering
-                        st.session_state.configuration["models"][0]["config"]["copy_grants"] = (
-                            copy_grants
-                        )
+                        st.session_state.configuration["models"][0]["config"][
+                            "copy_grants"
+                        ] = copy_grants
                         st.session_state.configuration["models"][0]["config"][
                             "snowflake_warehouse"
                         ] = snowflake_warehouse
-                        st.session_state.configuration["models"][0]["config"]["cluster_by"] = (
-                            cluster_by
-                        )
+                        st.session_state.configuration["models"][0]["config"][
+                            "cluster_by"
+                        ] = cluster_by
 
                     elif st.session_state["data_source"] == "bigquery":
-                        cluster_by_cols = [None] + st.session_state["node"].columns.tolist()
+                        cluster_by_cols = [None] + st.session_state[
+                            "node"
+                        ].columns.tolist()
                         cluster_by = st.multiselect(
                             "Cluster By",
                             options=cluster_by_cols,
-                            default=st.session_state.configuration["models"][0]["config"].get(
-                                "cluster_by", None
-                            ),
+                            default=st.session_state.configuration["models"][0][
+                                "config"
+                            ].get("cluster_by", None),
                             help="String or comma-separated list of columns to [cluster](https://cloud.google.com/bigquery/docs/clustered-tables) by.",
                             placeholder="e.g., column1, column2",
                         )
-                        st.session_state.configuration["models"][0]["config"]["cluster_by"] = (
-                            cluster_by
-                        )
+                        st.session_state.configuration["models"][0]["config"][
+                            "cluster_by"
+                        ] = cluster_by
 
                         partition_by_col = st.selectbox(
                             "Partition By",
@@ -1875,7 +1937,9 @@ Use this context to provide relevant and informed responses."""
 
                         if partition_by_col is not None:
                             data_type = None
-                            for c in st.session_state["configuration"]["models"][0]["columns"]:
+                            for c in st.session_state["configuration"]["models"][0][
+                                "columns"
+                            ]:
                                 if c["name"] == partition_by_col:
                                     data_type = c["data_type"]
                                     break
@@ -1884,10 +1948,17 @@ Use this context to provide relevant and informed responses."""
                                 st.error(
                                     f"⚠️ Unable to determine data type for the selected partition column '{partition_by_col}'. Please ensure the column exists in the model."
                                 )
-                                raise ValueError("Partition column data type not found.")
+                                raise ValueError(
+                                    "Partition column data type not found."
+                                )
 
                             partition_type = None
-                            if data_type not in ["DATE", "TIMESTAMP", "DATETIME", "INT64"]:
+                            if data_type not in [
+                                "DATE",
+                                "TIMESTAMP",
+                                "DATETIME",
+                                "INT64",
+                            ]:
                                 st.error(
                                     f"⚠️ The selected partition column '{partition_by_col}' has data type '{data_type}', which may not be suitable for partitioning in BigQuery. "
                                     "Consider using a column with DATE, TIMESTAMP, DATETIME, or INT64 data type."
@@ -1900,58 +1971,75 @@ Use this context to provide relevant and informed responses."""
 
                             if partition_type == "integer_range":
                                 if (
-                                    st.session_state.configuration["models"][0]["config"].get(
-                                        "partition_by"
-                                    )
+                                    st.session_state.configuration["models"][0][
+                                        "config"
+                                    ].get("partition_by")
                                     is not None
                                 ):
                                     if (
-                                        st.session_state.configuration["models"][0]["config"]
+                                        st.session_state.configuration["models"][0][
+                                            "config"
+                                        ]
                                         .get("partition_by")
                                         .get("range")
                                         is not None
                                     ):
                                         if (
-                                            st.session_state.configuration["models"][0]["config"][
-                                                "partition_by"
-                                            ]["range"].get("start")
+                                            st.session_state.configuration["models"][0][
+                                                "config"
+                                            ]["partition_by"]["range"].get("start")
                                             is not None
                                         ):
                                             default_integer_range_start = (
-                                                st.session_state.configuration["models"][0][
-                                                    "config"
-                                                ]["partition_by"]["range"].get("start", 0)
+                                                st.session_state.configuration[
+                                                    "models"
+                                                ][0]["config"]["partition_by"][
+                                                    "range"
+                                                ].get(
+                                                    "start", 0
+                                                )
                                             )
 
                                         if (
-                                            st.session_state.configuration["models"][0]["config"][
-                                                "partition_by"
-                                            ]["range"].get("end")
+                                            st.session_state.configuration["models"][0][
+                                                "config"
+                                            ]["partition_by"]["range"].get("end")
                                             is not None
                                         ):
                                             default_integer_range_end = (
-                                                st.session_state.configuration["models"][0][
-                                                    "config"
-                                                ]["partition_by"]["range"].get("end", 100)
+                                                st.session_state.configuration[
+                                                    "models"
+                                                ][0]["config"]["partition_by"][
+                                                    "range"
+                                                ].get(
+                                                    "end", 100
+                                                )
                                             )
 
                                         if (
-                                            st.session_state.configuration["models"][0]["config"][
-                                                "partition_by"
-                                            ]["range"].get("interval")
+                                            st.session_state.configuration["models"][0][
+                                                "config"
+                                            ]["partition_by"]["range"].get("interval")
                                             is not None
                                         ):
                                             default_integer_range_interval = (
-                                                st.session_state.configuration["models"][0][
-                                                    "config"
-                                                ]["partition_by"]["range"].get("interval", 10)
+                                                st.session_state.configuration[
+                                                    "models"
+                                                ][0]["config"]["partition_by"][
+                                                    "range"
+                                                ].get(
+                                                    "interval", 10
+                                                )
                                             )
                                 else:
                                     default_integer_range_start = 0
                                     default_integer_range_end = 100
                                     default_integer_range_interval = 10
 
-                                if default_integer_range_start >= default_integer_range_end:
+                                if (
+                                    default_integer_range_start
+                                    >= default_integer_range_end
+                                ):
                                     st.error(
                                         "⚠️ The 'Integer Range Start' must be less than the 'Integer Range End'. Please adjust the values accordingly."
                                     )
@@ -1993,12 +2081,17 @@ Use this context to provide relevant and informed responses."""
                                         }
                             elif partition_type == "date_or_timestamp":
                                 if (
-                                    st.session_state.configuration["models"][0]["config"].get(
-                                        "partition_by"
-                                    )
+                                    st.session_state.configuration["models"][0][
+                                        "config"
+                                    ].get("partition_by")
                                     is not None
                                 ):
-                                    granularity_options = ["hour", "day", "month", "year"]
+                                    granularity_options = [
+                                        "hour",
+                                        "day",
+                                        "month",
+                                        "year",
+                                    ]
                                     granularity = st.selectbox(
                                         "Partition Granularity",
                                         options=granularity_options,
@@ -2007,9 +2100,11 @@ Use this context to provide relevant and informed responses."""
                                     )
                                     time_ingestion_partitioning = st.checkbox(
                                         "Ingestion Time Partitioning",
-                                        value=st.session_state.configuration["models"][0]["config"][
-                                            "partition_by"
-                                        ].get("time_ingestion_partitioning", False),
+                                        value=st.session_state.configuration["models"][
+                                            0
+                                        ]["config"]["partition_by"].get(
+                                            "time_ingestion_partitioning", False
+                                        ),
                                         help=(
                                             "If set to true, the table will be partitioned based on the ingestion time. "
                                             + "This option is only applicable for date or timestamp partitioning."
@@ -2023,19 +2118,21 @@ Use this context to provide relevant and informed responses."""
                                     "time_ingestion_partitioning": time_ingestion_partitioning,
                                 }
 
-                        st.session_state.configuration["models"][0]["config"]["partition_by"] = (
-                            partition_by
-                        )
+                        st.session_state.configuration["models"][0]["config"][
+                            "partition_by"
+                        ] = partition_by
 
                         if (
-                            st.session_state.configuration["models"][0]["config"]["partition_by"]
+                            st.session_state.configuration["models"][0]["config"][
+                                "partition_by"
+                            ]
                             is not None
                         ):
                             require_partition_filter = st.checkbox(
                                 "Require Partition Filter",
-                                value=st.session_state.configuration["models"][0]["config"].get(
-                                    "require_partition_filter", False
-                                ),
+                                value=st.session_state.configuration["models"][0][
+                                    "config"
+                                ].get("require_partition_filter", False),
                                 help=(
                                     "If set to true, anyone querying this model must specify a partition filter, "
                                     + "otherwise their query will fail. This is recommended for very large tables. "
@@ -2050,9 +2147,9 @@ Use this context to provide relevant and informed responses."""
                                 partition_expiration_days = st.number_input(
                                     "Partition Expiration Days",
                                     min_value=0,
-                                    value=st.session_state.configuration["models"][0]["config"].get(
-                                        "partition_expiration_days", 0
-                                    ),
+                                    value=st.session_state.configuration["models"][0][
+                                        "config"
+                                    ].get("partition_expiration_days", 0),
                                     help=(
                                         "If set for date- or timestamp-type partitions, the partition will expire that many days after the date it represents. "
                                         + "E.g. A partition representing `2021-01-01`, set to expire after 7 days, will no longer be queryable as of `2021-01-08`. "
@@ -2136,7 +2233,8 @@ Use this context to provide relevant and informed responses."""
                     "And any other notes from the developer. "
                     "All the cool kids do it. And so should you! ;)"
                 ),
-                value=st.session_state.configuration["models"][0]["description"] or None,
+                value=st.session_state.configuration["models"][0]["description"]
+                or None,
             )
 
             node_database = st.text_input(
@@ -2168,9 +2266,9 @@ Use this context to provide relevant and informed responses."""
                 if st.session_state["node_type"] == "snapshot":
                     materializations = ["table"]
 
-                cfg_materialization = st.session_state.configuration["models"][0]["config"].get(
-                    "materialized", "table"
-                )
+                cfg_materialization = st.session_state.configuration["models"][0][
+                    "config"
+                ].get("materialized", "table")
                 node_materialization = st.selectbox(
                     "Materialization",
                     materializations,
@@ -2193,9 +2291,9 @@ Use this context to provide relevant and informed responses."""
                         ),
                         help="Whether to enable as Snowflake [secure view](https://docs.snowflake.com/en/user-guide/views-secure).",
                     )
-                    st.session_state.configuration["models"][0]["config"]["secure_view"] = (
-                        secure_view
-                    )
+                    st.session_state.configuration["models"][0]["config"][
+                        "secure_view"
+                    ] = secure_view
 
                 if node_materialization == "incremental":
                     unique_keys_options = st.session_state["node"].columns.tolist()
@@ -2257,9 +2355,9 @@ Use this context to provide relevant and informed responses."""
                         options=["ignore", "invalidate", "new_record"],
                         help="[Hard Deletes](https://docs.getdbt.com/reference/resource-configs/hard-deletes) option for the snapshot.",
                     )
-                    st.session_state.configuration["models"][0]["config"]["hard_deletes"] = (
-                        hard_deletes
-                    )
+                    st.session_state.configuration["models"][0]["config"][
+                        "hard_deletes"
+                    ] = hard_deletes
 
                     unique_keys_options = st.session_state["node"].columns.tolist()
                     node_unique_key = st.multiselect(
@@ -2270,9 +2368,9 @@ Use this context to provide relevant and informed responses."""
                     )
                     if len(node_unique_key) == 1:
                         node_unique_key = node_unique_key[0]
-                    st.session_state.configuration["models"][0]["config"]["unique_key"] = (
-                        node_unique_key
-                    )
+                    st.session_state.configuration["models"][0]["config"][
+                        "unique_key"
+                    ] = node_unique_key
 
                     strategy = st.selectbox(
                         "Strategy",
@@ -2280,7 +2378,9 @@ Use this context to provide relevant and informed responses."""
                         index=0,
                         help="[Strategy](https://docs.getdbt.com/docs/build/snapshots#strategy) for the snapshot.",
                     )
-                    st.session_state.configuration["models"][0]["config"]["strategy"] = strategy
+                    st.session_state.configuration["models"][0]["config"][
+                        "strategy"
+                    ] = strategy
 
                     if strategy == "timestamp":
                         # TODO: only date/time/integer columns
@@ -2290,12 +2390,14 @@ Use this context to provide relevant and informed responses."""
                             index=0,
                             help="[Updated At](https://docs.getdbt.com/docs/build/snapshots#updated-at) column for the snapshot.",
                         )
-                        st.session_state.configuration["models"][0]["config"]["updated_at"] = (
-                            updated_at
-                        )
+                        st.session_state.configuration["models"][0]["config"][
+                            "updated_at"
+                        ] = updated_at
 
                     elif strategy == "check":
-                        check_cols_options = ["all"] + st.session_state["node"].columns.tolist()
+                        check_cols_options = ["all"] + st.session_state[
+                            "node"
+                        ].columns.tolist()
                         check_cols = st.multiselect(
                             "Check Columns",
                             options=check_cols_options,
@@ -2304,21 +2406,33 @@ Use this context to provide relevant and informed responses."""
                         )
                         if "all" in check_cols:
                             check_cols = "all"
-                        st.session_state.configuration["models"][0]["config"]["check_cols"] = (
-                            check_cols
-                        )
+                        st.session_state.configuration["models"][0]["config"][
+                            "check_cols"
+                        ] = check_cols
 
                     st.session_state.configuration["models"][0]["config"][
                         "incremental_strategy"
                     ] = None
 
                 else:
-                    st.session_state.configuration["models"][0]["config"]["unique_key"] = None
-                    st.session_state.configuration["models"][0]["config"]["updated_at"] = None
-                    st.session_state.configuration["models"][0]["config"]["check_cols"] = None
-                    st.session_state.configuration["models"][0]["config"]["strategy"] = None
-                    st.session_state.configuration["models"][0]["config"]["hard_deletes"] = None
-                    st.session_state.configuration["models"][0]["config"]["check_cols"] = None
+                    st.session_state.configuration["models"][0]["config"][
+                        "unique_key"
+                    ] = None
+                    st.session_state.configuration["models"][0]["config"][
+                        "updated_at"
+                    ] = None
+                    st.session_state.configuration["models"][0]["config"][
+                        "check_cols"
+                    ] = None
+                    st.session_state.configuration["models"][0]["config"][
+                        "strategy"
+                    ] = None
+                    st.session_state.configuration["models"][0]["config"][
+                        "hard_deletes"
+                    ] = None
+                    st.session_state.configuration["models"][0]["config"][
+                        "check_cols"
+                    ] = None
 
                 node_pre_hook = st.text_area(
                     "Pre-hook SQL",
@@ -2357,26 +2471,34 @@ Use this context to provide relevant and informed responses."""
                 value=None,
             )
             if node_meta_tags and not self.parse_raw_meta_tags(node_meta_tags):
-                st.error("❌ Meta tags must be in key:value format, separated by commas.")
+                st.error(
+                    "❌ Meta tags must be in key:value format, separated by commas."
+                )
 
             st.session_state.configuration["models"][0]["name"] = node_name
-            st.session_state.configuration["models"][0]["description"] = node_description
-            st.session_state.configuration["models"][0]["config"]["database"] = node_database
-            st.session_state.configuration["models"][0]["config"]["schema"] = node_schema
+            st.session_state.configuration["models"][0][
+                "description"
+            ] = node_description
+            st.session_state.configuration["models"][0]["config"][
+                "database"
+            ] = node_database
+            st.session_state.configuration["models"][0]["config"][
+                "schema"
+            ] = node_schema
 
             if st.session_state["node_type"] in ["model", "snapshot"]:
                 st.session_state.configuration["models"][0]["enabled"] = node_enabled
 
-                st.session_state.configuration["models"][0]["config"]["materialized"] = (
-                    node_materialization
-                )
+                st.session_state.configuration["models"][0]["config"][
+                    "materialized"
+                ] = node_materialization
 
                 if node_materialization == "incremental":
                     if node_unique_key:
                         # Convert comma-separated string to a list of column names
-                        st.session_state.configuration["models"][0]["config"]["unique_key"] = (
-                            node_unique_key
-                        )
+                        st.session_state.configuration["models"][0]["config"][
+                            "unique_key"
+                        ] = node_unique_key
 
                     if node_incremental_strategy:
                         st.session_state.configuration["models"][0]["config"][
@@ -2398,23 +2520,27 @@ Use this context to provide relevant and informed responses."""
                                     "merge_exclude_columns"
                                 ] = [
                                     col.strip()
-                                    for col in node_merge_merge_exclude_columns.split(",")
+                                    for col in node_merge_merge_exclude_columns.split(
+                                        ","
+                                    )
                                     if col.strip()
                                 ]
 
-                st.session_state.configuration["models"][0]["config"]["contract"]["enforced"] = (
-                    node_contract_enforced
-                )
+                st.session_state.configuration["models"][0]["config"]["contract"][
+                    "enforced"
+                ] = node_contract_enforced
 
                 if node_contract_enforced is True:
                     st.session_state.configuration["models"][0]["config"]["contract"][
                         "alias_types"
                     ] = node_contract_enforced_alias_types
-                st.session_state.configuration["models"][0]["config"]["alias"] = node_alias
+                st.session_state.configuration["models"][0]["config"][
+                    "alias"
+                ] = node_alias
 
             if node_tags:
-                st.session_state.configuration["models"][0]["config"]["tags"] = self.parse_raw_tags(
-                    node_tags
+                st.session_state.configuration["models"][0]["config"]["tags"] = (
+                    self.parse_raw_tags(node_tags)
                 )
             if node_meta_tags:
                 st.session_state.configuration["models"][0]["config"]["meta"] = (
@@ -2458,7 +2584,9 @@ Use this context to provide relevant and informed responses."""
             # )
 
         else:
-            st.warning("⚠️ Please upload a dataset in the Data tab to enable node configuration.")
+            st.warning(
+                "⚠️ Please upload a dataset in the Data tab to enable node configuration."
+            )
 
     @staticmethod
     def clean_dict(data, keep_keys=None):
@@ -2529,7 +2657,9 @@ Use this context to provide relevant and informed responses."""
                 st.session_state.sf_table_info_df.columns = [
                     col.lower() for col in st.session_state.sf_table_info_df.columns
                 ]
-                info_df = st.session_state.sf_table_info_df.copy().to_dict(orient="records")[0]
+                info_df = st.session_state.sf_table_info_df.copy().to_dict(
+                    orient="records"
+                )[0]
 
                 default_node_configuration["name"] = info_df["table_name"]
                 default_node_configuration["description"] = info_df["description"]
@@ -2538,7 +2668,9 @@ Use this context to provide relevant and informed responses."""
                     default_node_configuration["config"]["materialized"] = "view"
 
                 elif info_df["is_dynamic"] is True:
-                    default_node_configuration["config"]["materialized"] = "dynamic_table"
+                    default_node_configuration["config"][
+                        "materialized"
+                    ] = "dynamic_table"
 
                 else:
                     default_node_configuration["config"]["materialized"] = "table"
@@ -2560,7 +2692,9 @@ Use this context to provide relevant and informed responses."""
                 st.session_state.bq_table_info_df.columns = [
                     col.lower() for col in st.session_state.bq_table_info_df.columns
                 ]
-                info_df = st.session_state.bq_table_info_df.copy().to_dict(orient="records")[0]
+                info_df = st.session_state.bq_table_info_df.copy().to_dict(
+                    orient="records"
+                )[0]
 
                 default_node_configuration["name"] = info_df["table_name"]
 
@@ -2597,7 +2731,8 @@ Use this context to provide relevant and informed responses."""
         schema = None
 
         columns_section = [
-            copy.deepcopy(DEFAULT_COL_DICT) for _ in range(len(st.session_state.node.columns))
+            copy.deepcopy(DEFAULT_COL_DICT)
+            for _ in range(len(st.session_state.node.columns))
         ]
 
         if data_source == "snowflake":
@@ -2626,7 +2761,9 @@ Use this context to provide relevant and informed responses."""
                             if scol["CONSTR_UNIQUE"] is True:
                                 constraints.append({"type": "unique"})
 
-                            columns_section[i]["constraints"] = constraints if constraints else None
+                            columns_section[i]["constraints"] = (
+                                constraints if constraints else None
+                            )
                             break  # Exit inner loop once a match is found
                 elif data_source == "bigquery":
                     for scol in schema:
@@ -2642,10 +2779,16 @@ Use this context to provide relevant and informed responses."""
 
                             if scol["CONSTRAINT_TYPE"] is not None:
                                 constraints.append(
-                                    {"type": scol["CONSTRAINT_TYPE"].lower().replace(" ", "_")}
+                                    {
+                                        "type": scol["CONSTRAINT_TYPE"]
+                                        .lower()
+                                        .replace(" ", "_")
+                                    }
                                 )
 
-                            columns_section[i]["constraints"] = constraints if constraints else None
+                            columns_section[i]["constraints"] = (
+                                constraints if constraints else None
+                            )
                             break  # Exit inner loop once a match is found
 
         return columns_section
@@ -2675,9 +2818,9 @@ Use this context to provide relevant and informed responses."""
                             "And any other notes from the developer. "
                             "All the cool kids do it. And so should you! ;)"
                         ),
-                        value=st.session_state["configuration"]["models"][0]["columns"][i][
-                            "description"
-                        ]
+                        value=st.session_state["configuration"]["models"][0]["columns"][
+                            i
+                        ]["description"]
                         or None,
                         key=f"{col}_desc",
                     )
@@ -2687,9 +2830,9 @@ Use this context to provide relevant and informed responses."""
                         "Data Type",
                         help="Data type of the column.",
                         placeholder=col_dtype_placeholder,
-                        value=st.session_state["configuration"]["models"][0]["columns"][i][
-                            "data_type"
-                        ]
+                        value=st.session_state["configuration"]["models"][0]["columns"][
+                            i
+                        ]["data_type"]
                         or None,
                         key=f"{colname}_dtype",
                     )
@@ -2710,12 +2853,14 @@ Use this context to provide relevant and informed responses."""
                         key=f"{colname}_meta_tags",
                     )
 
-                    if st.session_state["configuration"]["models"][0]["columns"][i]["constraints"]:
+                    if st.session_state["configuration"]["models"][0]["columns"][i][
+                        "constraints"
+                    ]:
                         col_constraints_value = [
                             c["type"]
-                            for c in st.session_state["configuration"]["models"][0]["columns"][i][
-                                "constraints"
-                            ]
+                            for c in st.session_state["configuration"]["models"][0][
+                                "columns"
+                            ][i]["constraints"]
                         ]
                         for cc in col_constraints_value:
                             if cc not in [
@@ -2738,9 +2883,9 @@ Use this context to provide relevant and informed responses."""
                         key=f"{colname}_constraints",
                         default=col_constraints_value,
                     )
-                    st.session_state.configuration["models"][0]["columns"][i]["constraints"] = [
-                        {"type": c} for c in col_constraints
-                    ]
+                    st.session_state.configuration["models"][0]["columns"][i][
+                        "constraints"
+                    ] = [{"type": c} for c in col_constraints]
 
                     for constraint in col_constraints:
                         if constraint == "primary_key":
@@ -2763,20 +2908,22 @@ Use this context to provide relevant and informed responses."""
                             # Check if foreign_key constraint is selected and there's a valid expression
                             if "foreign_key" in col_constraints and fk_expression:
                                 # Find the foreign_key constraint and add the expression
-                                for constraint in st.session_state.configuration["models"][0][
-                                    "columns"
-                                ][i]["constraints"]:
+                                for constraint in st.session_state.configuration[
+                                    "models"
+                                ][0]["columns"][i]["constraints"]:
                                     if constraint["type"] == "foreign_key":
                                         constraint["expression"] = fk_expression
                                         break
                         else:
                             pass
 
-                    if st.session_state["configuration"]["models"][0]["columns"][i]["data_tests"]:
+                    if st.session_state["configuration"]["models"][0]["columns"][i][
+                        "data_tests"
+                    ]:
                         col_data_tests_value = []
-                        for c in st.session_state["configuration"]["models"][0]["columns"][i][
-                            "data_tests"
-                        ]:
+                        for c in st.session_state["configuration"]["models"][0][
+                            "columns"
+                        ][i]["data_tests"]:
                             if isinstance(c, str):
                                 col_data_tests_value.append(c)
                             elif isinstance(c, dict):
@@ -2798,9 +2945,9 @@ Use this context to provide relevant and informed responses."""
                         default=col_data_tests_value,
                     )
 
-                    st.session_state.configuration["models"][0]["columns"][i]["data_tests"] = (
-                        col_data_tests
-                    )
+                    st.session_state.configuration["models"][0]["columns"][i][
+                        "data_tests"
+                    ] = col_data_tests
 
                     if col_data_tests:
                         for test in col_data_tests:
@@ -2811,21 +2958,21 @@ Use this context to provide relevant and informed responses."""
                                 i,
                             )
 
-                    st.session_state.configuration["models"][0]["columns"][i]["data_type"] = (
-                        col_dtype
-                    )
+                    st.session_state.configuration["models"][0]["columns"][i][
+                        "data_type"
+                    ] = col_dtype
 
-                    st.session_state.configuration["models"][0]["columns"][i]["description"] = (
-                        col_desc
-                    )
+                    st.session_state.configuration["models"][0]["columns"][i][
+                        "description"
+                    ] = col_desc
 
-                    st.session_state.configuration["models"][0]["columns"][i]["tags"] = (
-                        self.parse_raw_tags(col_tags)
-                    )
+                    st.session_state.configuration["models"][0]["columns"][i][
+                        "tags"
+                    ] = self.parse_raw_tags(col_tags)
 
-                    st.session_state.configuration["models"][0]["columns"][i]["meta"] = (
-                        self.parse_raw_meta_tags(col_meta_tags)
-                    )
+                    st.session_state.configuration["models"][0]["columns"][i][
+                        "meta"
+                    ] = self.parse_raw_meta_tags(col_meta_tags)
 
                 i += 1
 
@@ -2893,7 +3040,9 @@ Use this context to provide relevant and informed responses."""
             return {}
 
     @staticmethod
-    def configure_test(colname: str, testname: str, columns_section: list[dict], i: int) -> None:
+    def configure_test(
+        colname: str, testname: str, columns_section: list[dict], i: int
+    ) -> None:
         """Configure a specific data test for a column."""
         with st.expander(
             f"*{testname}* config",
@@ -2942,8 +3091,12 @@ Use this context to provide relevant and informed responses."""
             config = {
                 "where": where,
                 "severity": severity_choice,
-                "warn_if": (warn_if_choice if valid_warn_if_choice is not False else None),
-                "error_if": (error_if_choice if valid_error_if_choice is not False else None),
+                "warn_if": (
+                    warn_if_choice if valid_warn_if_choice is not False else None
+                ),
+                "error_if": (
+                    error_if_choice if valid_error_if_choice is not False else None
+                ),
             }
 
             for idx, test in enumerate(columns_section[i]["data_tests"]):
@@ -3030,7 +3183,9 @@ Use this context to provide relevant and informed responses."""
             ]
 
         else:
-            raise ValueError("Unsupported type. Supported types are 'model', 'source', 'snapshot'.")
+            raise ValueError(
+                "Unsupported type. Supported types are 'model', 'source', 'snapshot'."
+            )
 
         # Process the data structure
         if isinstance(data, dict):
@@ -3089,7 +3244,6 @@ Use this context to provide relevant and informed responses."""
                 st.session_state.get("sample_size", DEFAULT_SAMPLE_SIZE),
             )
             suggestion_prompt = enhanced_prompt + SUGGESTION_PROMPT
-            # st.write(suggestion_prompt)
             ai_suggestion_button = st.button(
                 "AI Suggestions",
                 help="Generate dataset description, column descriptions, constraints and data tests using AI.",
@@ -3147,13 +3301,19 @@ Use this context to provide relevant and informed responses."""
                         )
 
                 if not st.session_state.ai_suggestion:
-                    st.error("❌ Couldn't properly process the AI response or the request.")
+                    st.error(
+                        "❌ Couldn't properly process the AI response or the request."
+                    )
 
                 else:
-                    st.session_state.configuration["models"][0]["description"] = st.session_state[
-                        "ai_suggestion"
-                    ]["content"]["dataset_description"]
-                    suggestion_columns = st.session_state["ai_suggestion"]["content"]["columns"]
+                    st.session_state.configuration["models"][0]["description"] = (
+                        st.session_state["ai_suggestion"]["content"][
+                            "dataset_description"
+                        ]
+                    )
+                    suggestion_columns = st.session_state["ai_suggestion"]["content"][
+                        "columns"
+                    ]
 
                     suggested_cols_dict = {}
                     for col in suggestion_columns:
@@ -3168,11 +3328,13 @@ Use this context to provide relevant and informed responses."""
                             )
 
                             # Check if constraint_suggestions exists and is not None
-                            constraint_suggestions = suggested_cols_dict[col["name"]].get(
-                                "constraint_suggestions"
-                            )
+                            constraint_suggestions = suggested_cols_dict[
+                                col["name"]
+                            ].get("constraint_suggestions")
                             if constraint_suggestions:
-                                col["constraints"] = [{"type": c} for c in constraint_suggestions]
+                                col["constraints"] = [
+                                    {"type": c} for c in constraint_suggestions
+                                ]
 
                             # Check if test_suggestions exists and is not None
                             test_suggestions = suggested_cols_dict[col["name"]].get(
@@ -3182,14 +3344,16 @@ Use this context to provide relevant and informed responses."""
                                 col["data_tests"] = test_suggestions
                         else:
                             st.session_state.ai_not_found_cols.append(col["name"])
-                            logger.warning(f"Column {col['name']} not found in AI suggestions.")
+                            logger.warning(
+                                f"Column {col['name']} not found in AI suggestions."
+                            )
 
                     st.rerun()
 
         if st.session_state.get("ai_suggestion") is not None:
-            if st.session_state["ai_suggestion"].get("metrics") and not st.session_state[
-                "ai_suggestion"
-            ].get("error"):
+            if st.session_state["ai_suggestion"].get(
+                "metrics"
+            ) and not st.session_state["ai_suggestion"].get("error"):
                 metrics = st.session_state["ai_suggestion"]["metrics"]
                 self._caption_chat_metrics(metrics)
 
@@ -3245,7 +3409,9 @@ Use this context to provide relevant and informed responses."""
         """Main application entry point."""
         st.set_page_config(layout="wide")
 
-        st.markdown("# d<span style='color: orange;'>oc</span>bt", unsafe_allow_html=True)
+        st.markdown(
+            "# d<span style='color: orange;'>oc</span>bt", unsafe_allow_html=True
+        )
 
         tab_data, tab_node, tab_columns, tab_config, tab_ai, tab_chat = st.tabs(
             ["Data", "Node", "Columns", "Config", "AI", "Chat"]
