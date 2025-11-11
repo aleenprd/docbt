@@ -212,9 +212,11 @@ class DocbtServer:
                         # Handle bytes
                         elif isinstance(sample_val, bytes):
                             df_copy[col] = df_copy[col].apply(
-                                lambda x: x.decode("utf-8", errors="replace")
-                                if isinstance(x, bytes)
-                                else x
+                                lambda x: (
+                                    x.decode("utf-8", errors="replace")
+                                    if isinstance(x, bytes)
+                                    else x
+                                )
                             )
                             logger.debug(f"Column '{col}' (object) decoded from bytes")
                         # Generic fallback for other object types
@@ -1340,14 +1342,17 @@ Use this context to provide relevant and informed responses."""
         return dbs
 
     @staticmethod
-    @st.cache_data
-    def cache_snowflake_tables(_conn, _db):
+    # @st.cache_data
+    def get_snowflake_tables(_conn, _db):
         schemas = _conn.list_schemas(_db)
+        logger.debug(f"Schemas in {_db}: {schemas}")
         tables = []
         if schemas:
+            logger.critical(f"Fetching tables for schemas in {_db}")
             for schema in schemas:
                 if schema not in ["INFORMATION_SCHEMA"]:
-                    tables.extend([schema + "." + t for t in _conn.list_tables(_db)])
+                    tables.extend([schema + "." + t for t in _conn.list_tables(_db, schema)])
+        logger.debug(f"Tables in {_db}: {tables}")
         return tables
 
     @staticmethod
@@ -1584,14 +1589,16 @@ Use this context to provide relevant and informed responses."""
         dbs = DocbtServer.cache_snowflake_dbs(conn)
         st.session_state.sf_wh_df = DocbtServer.cache_snowflake_warehouses(conn)
 
-        st.session_state.sf_db = st.selectbox(
+        db_choice = st.selectbox(
             "Select Database",
             dbs,
             index=0,
             help="Select the Snowflake database to use.",
         )
+        st.session_state.sf_db = db_choice
 
-        tables = DocbtServer.cache_snowflake_tables(conn, st.session_state.sf_db)
+        tables = DocbtServer.get_snowflake_tables(conn, db_choice)
+
         st.session_state.sf_table = st.selectbox(
             "Select Table",
             tables,
@@ -1887,7 +1894,12 @@ Use this context to provide relevant and informed responses."""
                                 raise ValueError("Partition column data type not found.")
 
                             partition_type = None
-                            if data_type not in ["DATE", "TIMESTAMP", "DATETIME", "INT64"]:
+                            if data_type not in [
+                                "DATE",
+                                "TIMESTAMP",
+                                "DATETIME",
+                                "INT64",
+                            ]:
                                 st.error(
                                     f"⚠️ The selected partition column '{partition_by_col}' has data type '{data_type}', which may not be suitable for partitioning in BigQuery. "
                                     "Consider using a column with DATE, TIMESTAMP, DATETIME, or INT64 data type."
@@ -1998,7 +2010,12 @@ Use this context to provide relevant and informed responses."""
                                     )
                                     is not None
                                 ):
-                                    granularity_options = ["hour", "day", "month", "year"]
+                                    granularity_options = [
+                                        "hour",
+                                        "day",
+                                        "month",
+                                        "year",
+                                    ]
                                     granularity = st.selectbox(
                                         "Partition Granularity",
                                         options=granularity_options,
@@ -3089,7 +3106,6 @@ Use this context to provide relevant and informed responses."""
                 st.session_state.get("sample_size", DEFAULT_SAMPLE_SIZE),
             )
             suggestion_prompt = enhanced_prompt + SUGGESTION_PROMPT
-            # st.write(suggestion_prompt)
             ai_suggestion_button = st.button(
                 "AI Suggestions",
                 help="Generate dataset description, column descriptions, constraints and data tests using AI.",

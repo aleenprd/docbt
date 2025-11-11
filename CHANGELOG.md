@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2025-11-11
+- Fixed bug in Snowflake conn where it didn't fetch tables properly
+
 ## [0.1.4] - 2025-10-21
 
 ## [0.1.3] - 2025-10-21
