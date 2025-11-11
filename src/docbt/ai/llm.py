@@ -15,6 +15,12 @@ EXAMPLE_SUGGESTION = {
     "dataset_description": "This dataset contains measurements of flower petal and sepal dimensions for different species of flowers.",
     "columns": [
         {
+            "column_name": "id",
+            "column_description": "A unique identifier for each flower measurement.",
+            "test_suggestions": ["unique", "not_null"],
+            "constraint_suggestions": ["primary_key"],
+        },
+        {
             "column_name": "sepal_length",
             "column_description": "The length of the sepal of the flower, measured in centimeters.",
             "test_suggestions": ["not_null"],
@@ -41,7 +47,7 @@ EXAMPLE_SUGGESTION = {
         {
             "column_name": "species",
             "column_description": "The species of the flower.",
-            "test_suggestions": ["accepted_values"],
+            "test_suggestions": ["accepted_values", "not_null"],
             "constraint_suggestions": ["not_null"],
         },
     ],
@@ -144,7 +150,7 @@ SUGGESTIONS_RESPONSE_FORMAT = {
                                 "description": "A concise description of the column in one sentence.",
                             },
                             "test_suggestions": {
-                                "type": ["array", "null"],
+                                "type": "array",
                                 "description": "A list of suggested data tests for this column, if any.",
                                 "items": {
                                     "type": "string",
@@ -157,7 +163,7 @@ SUGGESTIONS_RESPONSE_FORMAT = {
                                 },
                             },
                             "constraint_suggestions": {
-                                "type": ["array", "null"],
+                                "type": "array",
                                 "description": "A list of suggested constraints for this column, if any.",
                                 "items": {
                                     "type": "string",
@@ -173,8 +179,6 @@ SUGGESTIONS_RESPONSE_FORMAT = {
                         "required": [
                             "column_name",
                             "column_description",
-                            "test_suggestions",
-                            "constraint_suggestions",
                         ],
                     },
                 },
@@ -206,7 +210,7 @@ SUGGESTIONS_RESPONSE_FORMAT_OLLAMA = {
                         "description": "A concise description of the column in one sentence.",
                     },
                     "test_suggestions": {
-                        "type": ["array", "null"],
+                        "type": "array",
                         "description": "A list of suggested data tests for this column, if any.",
                         "items": {
                             "type": "string",
@@ -219,7 +223,7 @@ SUGGESTIONS_RESPONSE_FORMAT_OLLAMA = {
                         },
                     },
                     "constraint_suggestions": {
-                        "type": ["array", "null"],
+                        "type": "array",
                         "description": "A list of suggested constraints for this column, if any.",
                         "items": {
                             "type": "string",
@@ -235,8 +239,6 @@ SUGGESTIONS_RESPONSE_FORMAT_OLLAMA = {
                 "required": [
                     "column_name",
                     "column_description",
-                    "test_suggestions",
-                    "constraint_suggestions",
                 ],
             },
         },
