@@ -2969,7 +2969,7 @@ Use this context to provide relevant and informed responses."""
                 ):
                     columns_section[i]["data_tests"][idx] = {
                         testname: {
-                            "arguments": args,
+                            **args,
                             "config": config if enable_conf else {},
                         }
                     }
