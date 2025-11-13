@@ -151,7 +151,9 @@ class DocbtServer:
         Returns:
             JSON string representation of the DataFrame.
         """
-        logger.debug(f"Converting DataFrame to JSON (compact={compact}). Dtypes: {df.dtypes.to_dict()}")
+        logger.debug(
+            f"Converting DataFrame to JSON (compact={compact}). Dtypes: {df.dtypes.to_dict()}"
+        )
 
         try:
             # Create a copy to avoid modifying the original DataFrame
@@ -238,7 +240,9 @@ class DocbtServer:
             json_str = df_copy.to_json(
                 orient="records", indent=indent, date_format="iso", default_handler=str
             )
-            logger.debug(f"Successfully converted DataFrame to JSON ({len(json_str)} characters, compact={compact})")
+            logger.debug(
+                f"Successfully converted DataFrame to JSON ({len(json_str)} characters, compact={compact})"
+            )
             return json_str
 
         except Exception as e:
