@@ -2806,7 +2806,6 @@ Use this context to provide relevant and informed responses."""
                         options=[
                             "not_null",
                             "unique",
-                            "distinct",
                             "accepted_values",
                             "relationships",
                         ],
@@ -3231,7 +3230,6 @@ Use this context to provide relevant and informed responses."""
                             "name",
                             "not_null",
                             "unique",
-                            "distinct",
                             "accepted_values",
                             "relationships",
                         ],
