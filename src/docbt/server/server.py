@@ -137,7 +137,7 @@ SYSTEM_PROMPT_HEIGHT = 300
 class DocbtServer:
     """Streamlit server for docbt application."""
 
-    def _df_to_json(self, df: pd.DataFrame) -> str:
+    def _df_to_json(self, df: pd.DataFrame, compact: bool = False) -> str:
         """Convert a DataFrame to a JSON string with proper handling of complex data types.
 
         Handles datetime64[ns, UTC], timedelta, period, categorical, and other special pandas types
@@ -145,11 +145,15 @@ class DocbtServer:
 
         Args:
             df: DataFrame to convert.
+            compact: If True, produces compact JSON without indentation to reduce token count.
+                    If False, produces pretty-printed JSON with indent=2 for readability.
 
         Returns:
             JSON string representation of the DataFrame.
         """
-        logger.debug(f"Converting DataFrame to JSON. Dtypes: {df.dtypes.to_dict()}")
+        logger.debug(
+            f"Converting DataFrame to JSON (compact={compact}). Dtypes: {df.dtypes.to_dict()}"
+        )
 
         try:
             # Create a copy to avoid modifying the original DataFrame
@@ -231,10 +235,14 @@ class DocbtServer:
                                 )
 
             # Convert to JSON with proper handling of NaN/None values
+            # Use compact format (no indentation) for LLM context to reduce tokens
+            indent = None if compact else 2
             json_str = df_copy.to_json(
-                orient="records", indent=2, date_format="iso", default_handler=str
+                orient="records", indent=indent, date_format="iso", default_handler=str
             )
-            logger.debug(f"Successfully converted DataFrame to JSON ({len(json_str)} characters)")
+            logger.debug(
+                f"Successfully converted DataFrame to JSON ({len(json_str)} characters, compact={compact})"
+            )
             return json_str
 
         except Exception as e:
@@ -877,14 +885,15 @@ class DocbtServer:
 
             # Convert sample to JSON
             try:
-                sample_json = self._df_to_json(sample_df)
+                # Use compact JSON to reduce token count in LLM context
+                sample_json = self._df_to_json(sample_df, compact=True)
 
-                # Convert column data types to JSON format
+                # Convert column data types to JSON format (compact to reduce tokens)
                 column_types = {
                     col: str(st.session_state.node[col].dtype)
                     for col in st.session_state.node.columns
                 }
-                column_types_json = json.dumps(column_types, indent=2)
+                column_types_json = json.dumps(column_types)
 
                 # Add data context to the system prompt
                 data_context = f"""
@@ -917,12 +926,12 @@ class DocbtServer:
 
                 # If JSON conversion fails, just add basic info
                 try:
-                    # Try to create JSON format for column types even in fallback
+                    # Try to create JSON format for column types even in fallback (compact to reduce tokens)
                     column_types = {
                         col: str(st.session_state.node[col].dtype)
                         for col in st.session_state.node.columns
                     }
-                    column_types_json = json.dumps(column_types, indent=2)
+                    column_types_json = json.dumps(column_types)
 
                     data_context = f"""
                     ## Data Context
@@ -1043,7 +1052,8 @@ class DocbtServer:
         sample_df = df.head(sample_size)
 
         try:
-            sample_json = self._df_to_json(sample_df)
+            # Use compact JSON to reduce token count in LLM context
+            sample_json = self._df_to_json(sample_df, compact=True)
             # Add data context to the system prompt
             data_context = f"""
 ## Data Context

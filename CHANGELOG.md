@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Compact JSON serialization for LLM context to reduce token usage by ~22.7%
 ### Fixed
 - Removed redundant "distinct" test option from column-level data tests; only "unique" is now available for uniqueness validation.
 
