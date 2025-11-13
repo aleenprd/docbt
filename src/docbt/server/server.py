@@ -2816,7 +2816,6 @@ Use this context to provide relevant and informed responses."""
                         options=[
                             "not_null",
                             "unique",
-                            "distinct",
                             "accepted_values",
                             "relationships",
                         ],
@@ -2866,7 +2865,7 @@ Use this context to provide relevant and informed responses."""
             st.text_area(
                 "*Accepted_values* list",
                 key=f"{colname}_accepted_values",
-                max_chars=256,
+                max_chars=512,
                 help="Configuration for accepted_values test. Add a list of values.",
                 placeholder="value1,value2",
                 value="",
@@ -3241,7 +3240,6 @@ Use this context to provide relevant and informed responses."""
                             "name",
                             "not_null",
                             "unique",
-                            "distinct",
                             "accepted_values",
                             "relationships",
                         ],
